@@ -131,7 +131,9 @@ class DataReader(object):
 
         n_examples = len(data.keys())
         labels = np.ndarray((n_examples,))
+
         label_to_int = dict()
+
         label_counter = 0
 
         for i, val in enumerate(data.values()):
@@ -147,7 +149,7 @@ class DataReader(object):
             # Extract headers
             if i == 0:
                 feat_order = list(val[this_label].keys())
-                feats = np.ndarray((n_examples, len(feat_order)))
+                feats = np.ndarray((n_examples, len(feat_order)), dtype=int)
 
             for j, o in enumerate(feat_order):
                 feats[i, j] = val[this_label][o]
@@ -165,21 +167,24 @@ class DataReader(object):
     def int_to_label(self, ints):
         return np.array([self._int_to_label[c] for c in ints])
 
-train_fname = './data/train.json'
-val_fname = './data/validation.json'
-dr = DataReader(train_fname)
-val_feats, val_labels = dr.load_data(val_fname)
-alphas = [0.001, 0.005]
+train_json = './data/train.json'
+val_json = './data/validation.json'
+json_dr = DataReader(train_json)
 
-print(dr.feats.shape, dr.labels.shape, val_feats.shape, val_labels.shape)
+train_csv = './data/train.csv'
+val_csv = './data/validation.csv'
+csv_dr = DataReader(train_csv)
 
+# IPython.embed()
+
+val_feats, val_labels = json_dr.load_data(val_json)
 
 
 alpha = 1.0
 nb = NaiveBayes(alpha=alpha)
-nb.fit(dr.feats, dr.labels)
-# IPython.embed()
-print(alpha, nb.accuracy(dr.feats, dr.labels))
+nb.fit(json_dr.feats, json_dr.labels)
+
+print(alpha, nb.accuracy(json_dr.feats, json_dr.labels))
 print(nb.accuracy(val_feats, val_labels))
 
 # Laplace smoothing
