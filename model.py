@@ -87,17 +87,24 @@ class NaiveBayes(object):
 
 
 class DataReader(object):
-    def __init__(self, fname, csv=True):
+    def __init__(self, fname):
         """
 
         :param fname:
         :param csv:
         """
         self._label_to_int = None
+        self.feats, self.labels = self.load_data(fname)
+
+    def load_data(self, fname):
+        csv = True if fname.lower().split('.')[-1] == 'csv' else False
+
         if csv:
-            self.feats, self.labels = self.load_csv(fname)
+            return self.load_csv(fname)
         else:
-            self.feats, self.labels = self.load_json(fname)
+            return self.load_json(fname)
+
+
 
     def load_csv(self, fname):
         with open(fname, newline='') as csvfile:
@@ -158,13 +165,41 @@ class DataReader(object):
     def int_to_label(self, ints):
         return np.array([self._int_to_label[c] for c in ints])
 
+train_fname = './data/train.json'
+val_fname = './data/validation.json'
+dr = DataReader(train_fname)
+val_feats, val_labels = dr.load_data(val_fname)
+alphas = [0.001, 0.005]
 
-dr = DataReader('./data/train.csv')
-nb = NaiveBayes()
+print(dr.feats.shape, dr.labels.shape, val_feats.shape, val_labels.shape)
+
+
+
+alpha = 1.0
+nb = NaiveBayes(alpha=alpha)
 nb.fit(dr.feats, dr.labels)
-print(nb.accuracy(dr.feats, dr.labels))
+# IPython.embed()
+print(alpha, nb.accuracy(dr.feats, dr.labels))
+print(nb.accuracy(val_feats, val_labels))
 
+# Laplace smoothing
 # Training error: 75.262
 # Validation error 72.150
 
-IPython.embed()
+# Lidstone smoothing
+# 0.001 0.769831209554 0.7355
+# 0.005 0.769364200414 0.736
+# 0.01 0.769097338048 0.7345
+# 0.05 0.767229301488 0.733
+# 0.1 0.765828274068 0.733
+# 0.15 0.76409366869 0.733
+# 0.2 0.763293081593 0.731
+# 0.25 0.76222563213 0.73
+# 0.3 0.760958035893 0.728
+# 0.35 0.760157448796 0.727
+# 0.4 0.759490292881 0.726
+# 0.6 0.756688238041 0.7255
+# 0.8 0.754686770298 0.7225
+# 1.0 0.752618586964 0.7215
+
+# IPython.embed()
