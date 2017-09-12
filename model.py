@@ -55,9 +55,9 @@ class NaiveBayes(object):
         >>> X = np.random.randint(2, size=(5, 16))
         >>> Y = np.array([0,2,4,4,4])
         >>> from model import NaiveBayes
-        >>> nb = NaiveBayes(1.0)
-        >>> nb.fit(X, Y)
-        >>> nb.predict(X)
+        >>> NB = NaiveBayes(1.0)
+        >>> NB.fit(X, Y)
+        >>> NB.predict(X)
         array([0, 2, 4, 4, 4])
 
     """
@@ -221,7 +221,19 @@ class DataReader(object):
             return self.load_json(fname)
 
     def load_csv(self, fname):
-        """Convert csv to feature, label arrays"""
+        """Convert csv to feature, label arrays
+
+        Unlike json, csv files are read with one function with an if switch.
+        A feature ordering is stored at training time based on the header file
+        and at testing time the columns of the new feature matrix are permuted
+        so that the headers of the new data match the ordering of the headers
+        of the old data.
+
+        Args:
+            fname, string
+                Filepath of csv which must have feature headers as first line
+
+        """
         with open(fname, newline='') as csvfile:
             reader = csv.reader(csvfile)
             data = list(reader)
@@ -311,12 +323,11 @@ class DataReader(object):
         return np.array([self._int_to_label[c] for c in ints])
 
 
-
-def test():
-
+def test_format_swaps():
+    """Test interchangeability of json and csv at train/test time"""
     train_fnames = ['./data/train.json', './data/train.csv']
     val_fnames = ['./data/validation.json', './data/validation.csv']
-    alphas = [0.001, 0.05, 0.10, 0.15]
+    alphas = [0.001, 0.005]
 
     for alpha in alphas:
         for train in train_fnames:
@@ -331,34 +342,57 @@ def test():
                 print('Validation set accuracy {:4.2f}%'.format(100 * nb.accuracy(val_feats, val_labels)))
 
 
-def main():
-    train = './data/letter-recognition.csv'
-    alpha = 0.001
-    reader = DataReader(train)
-    nb = NaiveBayes(alpha=alpha)
-    nb.fit(reader.feats, reader.labels)
-    print('Trained on {}.\nTraining set accuracy: {:4.4f}%'.format(train, 100*nb.accuracy(reader.feats, reader.labels)))
+def tune_alpha():
+    """Cross-validate to find best alpha"""
+    alphas = [0.0001, 0.001, 0.005, 0.01, 0.05, 0.10, 0.15, 0.2, 0.25, 0.3, 0.4, 0.6, 0.8, 1.0]
 
+    for alpha in alphas:
+        reader = DataReader('./data/train.json')
+        nb = NaiveBayes(alpha)
+        nb.fit(reader.feats, reader.labels)
+        val_feats, val_labels = reader.load_data('./data/validation.json')
+        print('{:4.4f} & {:4.4f} & {:4.4f} \\\\'.format(
+            alpha,
+            nb.accuracy(reader.feats, reader.labels),
+            nb.accuracy(val_feats, val_labels)
+        ))
+
+def train(input_file):
+    """Load data from input_file and train Naive Bayes model"""
+    reader = DataReader(input_file)
+    nb = NaiveBayes(alpha=0.0001)
+    nb.fit(reader.feats, reader.labels)
+    print('Trained on {}.\nTraining set accuracy: {:4.4f}%'.format(
+        input_file, 100*nb.accuracy(reader.feats, reader.labels)))
+    return reader, nb
+
+
+def predict(input_file):
+    """Predict the labels for data loaded from input_file
+
+    Requires training data to have been previously loaded by a DataReader
+    object persisting as a global variable READER and a trained Naive Bayes
+    model NB.
+    Args:
+        input_file, string
+            Path to file containing data in csv or json format.
+
+    Returns:
+        A numpy array of strings (capital letters)
+    """
+    global READER, NB
+    feats, labels = READER.load_data(input_file)
+    output = READER.int_to_label(NB.predict(feats))
+    return output
+
+
+def main():
+    """Train and calculate training accuracy by default on csv"""
+    global READER, NB
+    fname = './data/letter-recognition.csv'
+    READER, NB = train(fname)
+    output = predict(fname)
+    print(output)
 
 if __name__ == '__main__':
     main()
-
-# Laplace smoothing
-# Training error: 75.262
-# Validation error 72.150
-
-# Lidstone smoothing
-# 0.001 0.769831209554 0.7355
-# 0.005 0.769364200414 0.736
-# 0.01 0.769097338048 0.7345
-# 0.05 0.767229301488 0.733
-# 0.1 0.765828274068 0.733
-# 0.15 0.76409366869 0.733
-# 0.2 0.763293081593 0.731
-# 0.25 0.76222563213 0.73
-# 0.3 0.760958035893 0.728
-# 0.35 0.760157448796 0.727
-# 0.4 0.759490292881 0.726
-# 0.6 0.756688238041 0.7255
-# 0.8 0.754686770298 0.7225
-# 1.0 0.752618586964 0.7215
